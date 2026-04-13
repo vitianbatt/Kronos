@@ -66,7 +66,4 @@
     <img src="figures/overview.png" alt="" align="center" width="700px" />
 </p>
 
-> **Personal note:** I'm using this fork primarily to experiment with fine-tuning Kronos on crypto exchange data (Binance/Coinbase). The two-stage tokenizer approach is particularly interesting for handling the higher volatility in crypto markets compared to traditional equities.
-
-## ✨ Live Demo 
-We have set up a live demo to visualize Kronos
+> **Personal note:** I'm using this fork primarily to experiment with fine-tuning Kronos on crypto exchange data (specifically Binance spot markets). My main areas of interest are short-horizon forecasting (1h and 4h candles) and anomaly detection around high-volatility events.
