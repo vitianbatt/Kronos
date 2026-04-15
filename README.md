@@ -66,6 +66,6 @@
     <img src="figures/overview.png" alt="" align="center" width="700px" />
 </p>
 
-> **Personal note:** I'm using this fork primarily to experiment with fine-tuning Kronos on crypto
-> market data (specifically BTC/ETH hourly candles from Binance). My main areas of interest are
-> short-term return prediction and anomaly detection around high-volatility events.
+> **Personal note:** I'm using this fork primarily to experiment with fine-tuning Kronos on crypto market data (Binance spot pairs).
+> My main focus is evaluating short-term (1h/4h) price direction prediction on BTC and ETH.
+> See the `experiments/` directory for my custom fine-tuning configs and evaluation scripts.
