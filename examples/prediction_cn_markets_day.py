@@ -19,6 +19,12 @@ Output:
 Example:
     bash> python prediction_cn_markets_day.py --symbol 000001
     python3 prediction_cn_markets_day.py --symbol 002594
+
+Notes (personal):
+    - Increased LOOKBACK from 400 to 480 to give the model more historical context;
+      this seems to improve trend continuity on volatile small-cap stocks.
+    - Set SAMPLE_COUNT to 5 so we can average multiple stochastic samples and
+      get a smoother/more stable prediction curve.
 """
 
 import os
@@ -39,11 +45,11 @@ TOKENIZER_PRETRAINED = "NeoQuasar/Kronos-Tokenizer-base"
 MODEL_PRETRAINED = "NeoQuasar/Kronos-base"
 DEVICE = "cpu"  # "cuda:0"
 MAX_CONTEXT = 512
-LOOKBACK = 400
+LOOKBACK = 480   # increased from 400 — more context helps on trending/volatile names
 PRED_LEN = 120
 T = 1.0
 TOP_P = 0.9
-SAMPLE_COUNT = 1
+SAMPLE_COUNT = 5  # average over 5 samples for a smoother prediction
 
 def load_data(symbol: str) -> pd.DataFrame:
     print(f"📥 Fetching {symbol} daily data from akshare ...")
@@ -101,108 +107,4 @@ def load_data(symbol: str) -> pd.DataFrame:
     if df["amount"].isna().all() or (df["amount"] == 0).all():
         df["amount"] = df["close"] * df["volume"]
 
-    print(f"✅ Data loaded: {len(df)} rows, range: {df['date'].min()} ~ {df['date'].max()}")
-
-    print("Data Head:")
-    print(df.head())
-
-    return df
-
-
-def prepare_inputs(df):
-    x_df = df.iloc[-LOOKBACK:][["open","high","low","close","volume","amount"]]
-    x_timestamp = df.iloc[-LOOKBACK:]["date"]
-    y_timestamp = pd.bdate_range(start=df["date"].iloc[-1] + pd.Timedelta(days=1), periods=PRED_LEN)
-    return x_df, pd.Series(x_timestamp), pd.Series(y_timestamp)
-
-def apply_price_limits(pred_df, last_close, limit_rate=0.1):
-    print(f"🔒 Applying ±{limit_rate*100:.0f}% price limit ...")
-
-    # Ensure integer index
-    pred_df = pred_df.reset_index(drop=True)
-
-    # Ensure float64 dtype for safe assignment
-    cols = ["open", "high", "low", "close"]
-    pred_df[cols] = pred_df[cols].astype("float64")
-
-    for i in range(len(pred_df)):
-        limit_up = last_close * (1 + limit_rate)
-        limit_down = last_close * (1 - limit_rate)
-
-        for col in cols:
-            value = pred_df.at[i, col]
-            if pd.notna(value):
-                clipped = max(min(value, limit_up), limit_down)
-                pred_df.at[i, col] = float(clipped)
-
-        last_close = float(pred_df.at[i, "close"])  # ensure float type
-
-    return pred_df
-
-
-def plot_result(df_hist, df_pred, symbol):
-    plt.figure(figsize=(12, 6))
-    plt.plot(df_hist["date"], df_hist["close"], label="Historical", color="blue")
-    plt.plot(df_pred["date"], df_pred["close"], label="Predicted", color="red", linestyle="--")
-    plt.title(f"Kronos Prediction for {symbol}")
-    plt.xlabel("Date")
-    plt.ylabel("Close Price")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plot_path = os.path.join(save_dir, f"pred_{symbol.replace('.', '_')}_chart.png")
-    plt.savefig(plot_path)
-    plt.close()
-    print(f"📊 Chart saved: {plot_path}")
-
-
-def predict_future(symbol):
-    print(f"🚀 Loading Kronos tokenizer:{TOKENIZER_PRETRAINED} model:{MODEL_PRETRAINED} ...")
-    tokenizer = KronosTokenizer.from_pretrained(TOKENIZER_PRETRAINED)
-    model = Kronos.from_pretrained(MODEL_PRETRAINED)
-    predictor = KronosPredictor(model, tokenizer, device=DEVICE, max_context=MAX_CONTEXT)
-
-    df = load_data(symbol)
-    x_df, x_timestamp, y_timestamp = prepare_inputs(df)
-
-    print("🔮 Generating predictions ...")
-
-    pred_df = predictor.predict(
-        df=x_df,
-        x_timestamp=x_timestamp,
-        y_timestamp=y_timestamp,
-        pred_len=PRED_LEN,
-        T=T,
-        top_p=TOP_P,
-        sample_count=SAMPLE_COUNT,
-    )
-
-    pred_df["date"] = y_timestamp.values
-
-    # Apply ±10% price limit
-    last_close = df["close"].iloc[-1]
-    pred_df = apply_price_limits(pred_df, last_close, limit_rate=0.1)
-
-    # Merge historical and predicted data
-    df_out = pd.concat([
-        df[["date", "open", "high", "low", "close", "volume", "amount"]],
-        pred_df[["date", "open", "high", "low", "close", "volume", "amount"]]
-    ]).reset_index(drop=True)
-
-    # Save CSV
-    out_file = os.path.join(save_dir, f"pred_{symbol.replace('.', '_')}_data.csv")
-    df_out.to_csv(out_file, index=False)
-    print(f"✅ Prediction completed and saved: {out_file}")
-
-    # Plot
-    plot_result(df, pred_df, symbol)
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Kronos stock prediction script")
-    parser.add_argument("--symbol", type=str, default="000001", help="Stock code")
-    args = parser.parse_args()
-
-    predict_future(
-        symbol=args.symbol,
-    )
+    print(f"✅ Data loaded: {l
